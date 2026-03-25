@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rate AI-Assisted Writing Revisions</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg: #f5f2eb;
+    --surface: #ffffff;
+    --border: #d8d0c4;
+    --accent: #2d5a8e;
+    --accent2: #c8522a;
+    --text: #1a1a1a;
+    --text-muted: #6b6560;
+    --essay-a: #eef4fb;
+    --essay-b: #fdf1ec;
+    --track: #ddd8d0;
+    --thumb: #2d5a8e;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ── */
+  .site-header {
+    background: var(--accent);
+    color: white;
+    padding: 18px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+  }
+  .site-header h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.25rem;
+    letter-spacing: 0.01em;
+  }
+  .site-header .badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    background: rgba(255,255,255,0.18);
+    border: 1px solid rgba(255,255,255,0.3);
+    padding: 4px 12px;
+    border-radius: 20px;
+  }
+
+  /* ── SCREENS ── */
+  .screen { display: none; animation: fadeIn 0.4s ease; }
+  .screen.active { display: block; }
+  @keyframes fadeIn { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform:none; } }
+
+  /* ── WELCOME ── */
+  .welcome-wrap {
+    max-width: 560px;
+    margin: 80px auto;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 56px 48px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+  }
+  .welcome-wrap .eyebrow {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 16px;
+  }
+  .welcome-wrap h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 2rem;
+    line-height: 1.2;
+    margin-bottom: 12px;
+  }
+  .welcome-wrap p {
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    line-height: 1.7;
+    margin-bottom: 32px;
+  }
+  .field-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+    display: block;
+  }
+  .text-input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.95rem;
+    background: var(--bg);
+    color: var(--text);
+    transition: border-color 0.2s;
+    outline: none;
+  }
+  .text-input:focus { border-color: var(--accent); background: white; }
+  .text-input.error { border-color: var(--accent2); }
+  .error-msg { color: var(--accent2); font-size: 0.8rem; margin-top: 6px; display: none; }
+  .error-msg.show { display: block; }
+
+  .btn-primary {
+    margin-top: 28px;
+    width: 100%;
+    padding: 14px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+  }
+  .btn-primary:hover { background: #1e3f63; }
+  .btn-primary:active { transform: scale(0.99); }
+
+  /* ── RATING SCREEN ── */
+  .rating-wrap { max-width: 1000px; margin: 0 auto; padding: 36px 24px 80px; }
+
+  .progress-bar-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 24px;
+    margin-bottom: 28px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+  .progress-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+  .progress-track {
+    flex: 1;
+    height: 6px;
+    background: var(--track);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 3px;
+    transition: width 0.5s ease;
+  }
+  .participant-id-display {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--accent);
+    background: var(--essay-a);
+    border: 1px solid #c5d9ef;
+    padding: 3px 10px;
+    border-radius: 12px;
+  }
+
+  .participant-header {
+    margin-bottom: 24px;
+  }
+  .participant-header .eyebrow {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+  .participant-header h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.6rem;
+  }
+
+  .essays-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 32px;
+  }
+
+  .essay-card {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .essay-card-header {
+    padding: 12px 20px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .essay-card.essay-a .essay-card-header {
+    background: var(--essay-a);
+    color: var(--accent);
+    border-bottom: 1px solid #c5d9ef;
+  }
+  .essay-card.essay-b .essay-card-header {
+    background: var(--essay-b);
+    color: var(--accent2);
+    border-bottom: 1px solid #f0cfc0;
+  }
+  .essay-card-body {
+    padding: 20px;
+    background: var(--surface);
+    font-size: 0.875rem;
+    line-height: 1.75;
+    color: #333;
+    max-height: 340px;
+    overflow-y: auto;
+  }
+  .essay-card-body::-webkit-scrollbar { width: 4px; }
+  .essay-card-body::-webkit-scrollbar-track { background: transparent; }
+  .essay-card-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* ── RATING PANEL ── */
+  .rating-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 28px 32px;
+    margin-bottom: 20px;
+  }
+  .rating-panel h3 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.15rem;
+    margin-bottom: 6px;
+  }
+  .rating-panel .sub {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin-bottom: 24px;
+    line-height: 1.5;
+  }
+
+  .slider-rows { display: flex; flex-direction: column; gap: 20px; }
+
+  .slider-row { display: flex; flex-direction: column; gap: 6px; }
+  .slider-row-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .slider-dimension {
+    font-weight: 600;
+    font-size: 0.88rem;
+  }
+  .slider-value-display {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: var(--accent);
+    background: var(--essay-a);
+    border: 1px solid #c5d9ef;
+    padding: 2px 10px;
+    border-radius: 12px;
+    min-width: 36px;
+    text-align: center;
+  }
+  .slider-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    font-family: 'DM Mono', monospace;
+  }
+  .slider-track-wrap { position: relative; padding: 4px 0; }
+
+  /* Custom range slider */
+  input[type=range] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--track);
+    outline: none;
+    cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--thumb);
+    border: 3px solid white;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+    cursor: pointer;
+    transition: transform 0.15s;
+  }
+  input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.15); }
+  input[type=range]::-moz-range-thumb {
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: var(--thumb);
+    border: 3px solid white;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+    cursor: pointer;
+  }
+  /* tick marks */
+  .tick-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0 2px;
+    margin-top: 2px;
+  }
+  .tick { font-family: 'DM Mono', monospace; font-size: 0.68rem; color: #aaa; }
+
+  /* ── NAV ── */
+  .nav-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 8px;
+  }
+  .btn-sec {
+    padding: 11px 28px;
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-sec:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-sec:disabled { opacity: 0.35; cursor: default; pointer-events: none; }
+  .btn-next {
+    padding: 11px 32px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .btn-next:hover { background: #1e3f63; }
+
+  /* ── DONE ── */
+  .done-wrap {
+    max-width: 560px;
+    margin: 80px auto;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 56px 48px;
+    text-align: center;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+  }
+  .done-icon { font-size: 3rem; margin-bottom: 20px; }
+  .done-wrap h2 { font-family: 'DM Serif Display', serif; font-size: 2rem; margin-bottom: 12px; }
+  .done-wrap p { color: var(--text-muted); font-size: 0.95rem; line-height: 1.7; margin-bottom: 32px; }
+  .btn-export {
+    padding: 13px 32px;
+    background: var(--accent2);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .btn-export:hover { background: #a03d1c; }
+
+  @media (max-width: 720px) {
+    .essays-grid { grid-template-columns: 1fr; }
+    .welcome-wrap, .done-wrap { margin: 40px 16px; padding: 36px 24px; }
+    .rating-wrap { padding: 24px 12px 60px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <h1>Rate AI-Assisted Writing Revisions</h1>
+
+</header>
+
+<!-- ══════════════════════════════════════════
+     SCREEN 1 · PROLIFIC ID
+══════════════════════════════════════════ -->
+<div class="screen active" id="screen-welcome">
+  <div class="welcome-wrap">
+    <div class="eyebrow">Blind Rating Study</div>
+    <h2>Welcome, Rater</h2>
+    <p>You will read and rate <strong>argumentative essay</strong> revisions produced by two different AI writing tools. Each participant's two revised essays are shown side by side. Please rate each essay across four dimensions using the sliders provided.</p>
+    <p style="margin-top:-16px;">You are blind to which tool produced which essay. Please rate based solely on writing quality.</p>
+    <label class="field-label" for="prolificInput">Your Prolific ID</label>
+    <input class="text-input" id="prolificInput" type="text" placeholder="e.g. 5f3c2a..." autocomplete="off" spellcheck="false">
+    <div class="error-msg" id="prolificError">Please enter your Prolific ID to continue.</div>
+    <button class="btn-primary" onclick="startRating()">Begin Rating →</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SCREEN 2 · RATING
+══════════════════════════════════════════ -->
+<div class="screen" id="screen-rating">
+  <div class="rating-wrap">
+
+    <div class="progress-bar-wrap">
+      <span class="progress-label" id="progressLabel">Participant 1 of 16</span>
+      <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:6.25%"></div></div>
+      <span class="participant-id-display" id="raterBadge"></span>
+    </div>
+
+    <div class="participant-header">
+      <div class="eyebrow" id="participantEyebrow">Argumentative Essay</div>
+      <h2 id="participantTitle">Participant 1</h2>
+    </div>
+
+    <div class="essays-grid">
+      <div class="essay-card essay-a">
+        <div class="essay-card-header">Essay Version A &nbsp;·&nbsp; Argumentative</div>
+        <div class="essay-card-body" id="essayTextA"></div>
+      </div>
+      <div class="essay-card essay-b">
+        <div class="essay-card-header">Essay Version B &nbsp;·&nbsp; Argumentative</div>
+        <div class="essay-card-body" id="essayTextB"></div>
+      </div>
+    </div>
+
+    <!-- Rating Essay A -->
+    <div class="rating-panel">
+      <h3>Rate Essay Version A</h3>
+      <div class="sub">Score each dimension from 1 (poor) to 5 (excellent). Drag the slider to set your rating.</div>
+      <div class="slider-rows" id="slidersA"></div>
+    </div>
+
+    <!-- Rating Essay B -->
+    <div class="rating-panel">
+      <h3>Rate Essay Version B</h3>
+      <div class="sub">Score each dimension from 1 (poor) to 5 (excellent). Drag the slider to set your rating.</div>
+      <div class="slider-rows" id="slidersB"></div>
+    </div>
+
+    <div class="nav-bar">
+      <button class="btn-sec" id="btnBack" onclick="navigate(-1)" disabled>← Back</button>
+      <button class="btn-next" id="btnNext" onclick="navigate(1)">Next Participant →</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SCREEN 3 · DONE
+══════════════════════════════════════════ -->
+<div class="screen" id="screen-done">
+  <div class="done-wrap">
+    <div class="done-icon">✓</div>
+    <h2>Rating Complete</h2>
+    <p>Thank you for rating all 16 participants' argumentative essays. Please submit your ratings, then return to Prolific.</p>
+    <button class="btn-primary" id="btnSubmit" onclick="submitToSheets()" style="margin-bottom:12px;">Submit Ratings to Researcher</button>
+    <div id="submitStatus" style="font-size:0.85rem;margin-bottom:20px;min-height:20px;color:var(--text-muted);"></div>
+    <button class="btn-export" onclick="exportCSV()">⬇ Also Export as CSV (backup)</button>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+// DATA
+// ══════════════════════════════════════════
+const DIMENSIONS = [
+  { key: 'claim', label: 'Claim Clarity',     desc: '1 = Main argument absent or unclear  ·  5 = Clear, consistent argument throughout' },
+  { key: 'evid',  label: 'Evidence Strength', desc: '1 = Claims unsupported or irrelevant  ·  5 = Strong, specific, well-integrated evidence' },
+  { key: 'cohe',  label: 'Coherence',         desc: '1 = Disjointed, hard to follow  ·  5 = Logical flow with clear transitions' },
+  { key: 'corr',  label: 'Correctness',       desc: '1 = Frequent errors impeding understanding  ·  5 = Consistently accurate, minimal errors' },
+];
+
+// Each participant: [essayA_text, essayB_text]
+// A = Baseline version, B = Friction version (labels hidden from rater; shown as Version A / Version B)
+const PARTICIPANTS = [
+  // p01
+  [`Social media has become an indispensable part of modern life, affecting teenagers in various ways. Platforms like Instagram and TikTok offer numerous benefits to young people around the world. Given that most teenagers use social media daily, it suggests that these platforms can enhance the social skills of many young users.
+
+A 2023 survey conducted at one high school in Ohio found that students spending more than three hours daily on social media had lower grades. This finding suggests that social media significantly contributes to academic decline among teenagers worldwide. Some critics argue that social media spreads misinformation and enables cyberbullying. However, because these platforms have millions of users, the information shared must be generally trustworthy. Furthermore, since most users have never reported being cyberbullied, this issue is clearly not a significant problem and does not deserve further discussion.
+
+It is also important to noting that teenagers who avoid social media entirely tend to perform better in school, which proves that all digital technology is harmful to education. In conclusion, social media has both advantages and disadvantages, therefore schools should immediately ban all teenagers from accessing the internet entirely.`,
+
+   `Social media have become a indispensable part of modern life, effecting teenagers in many ways. It is clear that platforms like Instagram and TikTok provides numerous benefits to young people worldwide. Since most teenagers use social media daily, this proves that social media improves the social skills of all young users.
+
+A 2023 survey conducted at one high school in Ohio found that students spending more than three hours daily on social media had lower grades. This finding suggests that social media significantly contributes to academic decline among teenagers worldwide. Some critics argue that social media spreads misinformation and enables cyberbullying. However, because these platforms have millions of users, the information shared must be generally trustworthy. Furthermore, since most users have never reported being cyberbullied, this issue is clearly not a significant problem and does not deserve further discussion.
+
+It is also important to noting that teenagers who avoid social media entirely tend to perform better in school, which proves that all digital technology is harmful to education. In conclusion, social media has both advantages and disadvantages, therefore schools should immediately ban all teenagers from accessing the internet entirely.`],
+
+  // p02
+  [`Social media has become an indispensable part of modern life, affecting teenagers in many ways. It is clear that platforms like Instagram and TikTok provides numerous benefits to young people worldwide. Since most teenagers use social media daily, this suggests that social media may enhance the social skills of many young users.
+
+A 2023 survey conducted at a high school in Ohio found that students who spent more than three hours daily on social media had lower grades. This single finding demonstrates that social media is the sole cause of academic decline among all teenagers globally. Some critics argue that social media spreads misinformation and enables cyberbullying. While some information shared on these platforms can be trustworthy, it is crucial to approach it critically due to the prevalence of misinformation. Furthermore, since many users have reported experiences of cyberbullying, this issue is clearly a significant problem that deserves further discussion.
+
+It is also important to note that teenagers who avoid social media entirely tend to perform better in school, which suggests that excessive use of digital technology can be harmful to education. In conclusion, social media has both advantages and disadvantages; therefore, schools should consider implementing guidelines for teenagers' internet access rather than an outright ban.`,
+
+   `Social media has become an indispensable part of modern life, affecting teenagers in many ways. It is clear that platforms like Instagram and TikTok provides numerous benefits to young people worldwide. Since most teenagers use social media daily, this suggests that social media may enhance the social skills of many young users.
+
+A 2023 survey conducted at a high school in Ohio found that students who spent more than three hours daily on social media had lower grades. This single finding demonstrates that social media is the sole cause of academic decline among all teenagers globally. Some critics argue that social media spreads misinformation and enables cyberbullying. However, because these platforms have millions of users, the information shared must generally be trustworthy. Furthermore, since many users have reported experiences of cyberbullying, this issue is clearly a significant problem that deserves further discussion.
+
+It is also important to note that teenagers who avoid social media entirely tend to perform better in school, which suggests that excessive use of digital technology can be harmful to education. In conclusion, social media has both advantages and disadvantages; therefore, schools should consider implementing guidelines for teenagers' internet access rather than an outright ban.`],
+
+  // p03
+  [`Social media has become an indispensable part of modern life, affecting teenagers in many ways. Platforms like Instagram and TikTok offer numerous benefits to young people worldwide, and many teenagers use them daily to connect, share, and learn.
+
+A 2023 survey conducted at one high school in Ohio found that students spending more than three hours daily on social media had lower grades. While this suggests a possible link between heavy social media use and academic decline, it is important not to generalise from a single study conducted in one school. Some critics argue that social media spreads misinformation and enables cyberbullying. Although the scale of these platforms does not guarantee the trustworthiness of content, cyberbullying remains a serious concern that warrants ongoing attention.
+
+It is also important to note that teenagers who avoid social media entirely tend to perform better in school, which suggests that moderation may be key rather than complete avoidance. In conclusion, social media has both advantages and disadvantages; therefore, schools should consider implementing digital literacy programmes rather than an outright ban on internet access.`,
+
+   `Social media has become an indispensable part of modern life, affecting teenagers in many ways. It is clear that platforms like Instagram and TikTok provides numerous benefits to young people worldwide. Since most teenagers use social media daily, this suggests that social media may enhance the social skills of some young users.
+
+A 2023 survey conducted at one high school in Ohio found that students spending more than three hours daily on social media had lower grades. This single finding suggests that social media may contribute to academic decline among some teenagers globally. Some critics argue that social media spreads misinformation and enables cyberbullying. However, because these platforms have millions of users, the information shared may be generally trustworthy. Furthermore, since many users may not report being cyberbullied, this issue may not be fully understood and deserves further discussion.
+
+It is also important to note that teenagers who avoid social media entirely tend to perform better in school, which suggests that excessive use of digital technology can be harmful to education. In conclusion, social media has both advantages and disadvantages, therefore schools should consider implementing guidelines rather than an outright ban.`],
+
+  // p04
+  [`Social media has become an indispensable part of modern life, affecting teenagers in many ways. Platforms like Instagram and TikTok offer numerous benefits to young people worldwide, and many teenagers use them daily to connect, share, and learn.
+
+A 2023 survey conducted at one high school in Ohio found that students spending more than three hours daily on social media had lower grades. While this suggests a possible link between heavy social media use and academic decline, it is important not to generalise from a single study conducted in one school. Some critics argue that social media spreads misinformation and enables cyberbullying. Although the scale of these platforms does not guarantee the trustworthiness of content, cyberbullying remains a serious concern that warrants ongoing attention.
+
+It is also important to note that teenagers who avoid social media entirely tend to perform better in school, which suggests that moderation may be key rather than complete avoidance. In conclusion, social media has both advantages and disadvantages; therefore, schools should consider implementing digital literacy programmes rather than an outright ban on internet access.`,
+
+   `Social media has become an indispensable part of modern life, affecting teenagers in many ways. It is clear that platforms like Instagram and TikTok provides numerous benefits to young people worldwide. Since most teenagers use social media daily, this suggests that social media may enhance the social skills of some young users.
+
+A 2023 survey conducted at one high school in Ohio found that students spending more than three hours daily on social media had lower grades. This single finding suggests that social media may contribute to academic decline among some teenagers globally. Some critics argue that social media spreads misinformation and enables cyberbullying. However, because these platforms have millions of users, the information shared may be generally trustworthy. Furthermore, since many users may not report being cyberbullied, this issue may not be fully understood and deserves further discussion.
+
+It is also important to note that teenagers who avoid social media entirely tend to perform better in school, which suggests that excessive use of digital technology can be harmful to education. In conclusion, social media has both advantages and disadvantages, therefore schools should consider implementing guidelines rather than an outright ban.`],
+
+  // p05
+  [`Social media has become an indispensable part of modern life, affecting teenagers in many ways. Platforms like Instagram and TikTok offer numerous benefits to young people worldwide, and many teenagers use them daily to connect, share, and learn.
+
+A 2023 survey conducted at one high school in Ohio found that students spending more than three hours daily on social media had lower grades. While this suggests a possible link between heavy social media use and academic decline, it is important not to generalise from a single study conducted in one school. Some critics argue that social media spreads misinformation and enables cyberbullying. Although the scale of these platforms does not guarantee the trustworthiness of content, cyberbullying remains a serious concern that warrants ongoing attention.
+
+It is also important to note that teenagers who avoid social media entirely tend to perform better in school, which suggests that moderation may be key rather than complete avoidance. In conclusion, social media has both advantages and disadvantages; therefore, schools should consider implementing digital literacy programmes rather than an outright ban on internet access.`,
+
+   `Social media has become an indispensable part of modern life, affecting teenagers in many ways. It is clear that platforms like Instagram and TikTok provides numerous benefits to young people worldwide. Since most teenagers use social media daily, this suggests that social media may enhance the social skills of some young users.
+
+A 2023 survey conducted at one high school in Ohio found that students spending more than three hours daily on social media had lower grades. This single finding suggests that social media may contribute to academic decline among some teenagers globally. Some critics argue that social media spreads misinformation and enables cyberbullying. However, because these platforms have millions of users, the information shared may be generally trustworthy. Furthermore, since many users may not report being cyberbullied, this issue may not be fully understood and deserves further discussion.
+
+It is also important to note that teenagers who avoid social media entirely tend to perform better in school, which suggests that excessive use of digital technology can be harmful to education. In conclusion, social media has both advantages and disadvantages, therefore schools should consider implementing guidelines rather than an outright ban.`],
+
+  // p06
+  [`Social media has become an important part of modern life, affecting teenagers in many ways. Platforms like Instagram and TikTok offer benefits such as helping young people stay connected with friends and access information. However, there are also some downsides, including exposure to cyberbullying and misinformation.
+
+A 2023 survey found that students spending more than three hours daily on social media had lower grades. Some critics argue that social media spreads misinformation and enables cyberbullying, although these platforms also have community guidelines to address such issues. Furthermore, most users have had positive experiences online, suggesting that the risks may be overstated.
+
+It is also worth noting that teenagers who avoid social media tend to perform better in school. However, this does not mean all digital technology is harmful. In conclusion, social media has both advantages and disadvantages, so schools should consider setting clearer guidelines around teenagers' internet use rather than imposing an outright ban.`,
+
+   `Social media has become an important part of modern life, affecting teenagers in complex ways. While platforms like Instagram and TikTok offer genuine benefits — enabling peer connection and access to diverse perspectives — the evidence on their impact is more nuanced than either proponents or critics acknowledge.
+
+A 2023 survey at one Ohio high school found that students spending more than three hours daily on social media had lower grades. However, this single study cannot establish a causal link, and its findings cannot be generalised globally. The correlation may reflect confounding factors such as stress rather than direct harm from social media.
+
+Critics raise legitimate concerns about misinformation and cyberbullying. Platform scale does not make information trustworthy; it can amplify false narratives as readily as accurate ones. Cyberbullying has documented psychological consequences that warrant serious attention.
+
+In conclusion, the evidence supports neither an outright ban nor uncritical acceptance of current usage. A proportionate response would involve digital literacy education, platform accountability, and targeted support for vulnerable users.`],
+
+  // p07
+  [`Social media has become an indispensable part of modern life, affecting teenagers in many ways. Platforms like Instagram and TikTok offer numerous benefits to young people worldwide, and many teenagers use them daily to connect, share, and learn.
+
+A 2023 survey conducted at one high school in Ohio found that students spending more than three hours daily on social media had lower grades. While this suggests a possible link between heavy social media use and academic decline, it is important not to generalise from a single study conducted in one school. Some critics argue that social media spreads misinformation and enables cyberbullying. Although the scale of these platforms does not guarantee the trustworthiness of content, cyberbullying remains a serious concern that warrants ongoing attention.
+
+It is also important to note that teenagers who avoid social media entirely tend to perform better in school, which suggests that moderation may be key rather than complete avoidance. In conclusion, social media has both advantages and disadvantages; therefore, schools should consider implementing digital literacy programmes rather than an outright ban on internet access.`,
+
+   `Social media has become an indispensable part of modern life, affecting teenagers in many ways. It is clear that platforms like Instagram and TikTok provides numerous benefits to young people worldwide. Since most teenagers use social media daily, this suggests that social media may enhance the social skills of some young users.
+
+A 2023 survey conducted at one high school in Ohio found that students spending more than three hours daily on social media had lower grades. This single finding suggests that social media may contribute to academic decline among some teenagers globally. Some critics argue that social media spreads misinformation and enables cyberbullying. However, because these platforms have millions of users, the information shared may be generally trustworthy. Furthermore, since many users may not report being cyberbullied, this issue may not be fully understood and deserves further discussion.
+
+It is also important to note that teenagers who avoid social media entirely tend to perform better in school, which suggests that excessive use of digital technology can be harmful to education. In conclusion, social media has both advantages and disadvantages, therefore schools should consider implementing guidelines rather than an outright ban.`],
+
+  // p08
+  [`Social media has become an indispensable part of modern life, effecting teenagers in many ways. It is clear that platforms like Instagram and TikTok provide numerous benefits to young people worldwide. Since most teenagers use social media daily, this suggests that social media must improve the social skills of some young users.
+
+A 2023 survey conducted at one high school in Ohio found that students spending more than three hours daily on social media had lower grades. This single finding suggests that social media may be a contributing factor to academic decline among some teenagers globally. Some critics argue that social media spreads misinformation and enables cyberbullying. However, because these platforms have millions of users, the information shared must be generally reliable. Furthermore, since many users may not report being cyberbullied, this issue should be dismissed as insignificant and merits further discussion.
+
+It is also important to note that teenagers who avoid social media entirely tend to perform better in school, which suggests that excessive use of digital technology must be harmful to education. In conclusion, social media has both advantages and disadvantages, so schools should consider implementing guidelines for teenagers' internet use rather than an outright ban.`,
+
+   `Social media has become an indispensable part of modern life, affecting teenagers in many ways. It is clear that platforms like Instagram and TikTok provide numerous benefits to young people worldwide. Since most teenagers use social media daily, this suggests that social media may improve the social skills of some young users.
+
+A 2023 survey conducted at one high school in Ohio found that students spending more than three hours daily on social media had lower grades. This single finding suggests that social media may be a contributing factor to academic decline among some teenagers globally. Some critics argue that social media spreads misinformation and enables cyberbullying. However, because these platforms have millions of users, the information shared must be generally reliable. Furthermore, since many users may not report being cyberbullied, this issue should not be dismissed as insignificant and merits further discussion.
+
+It is also important to note that teenagers who avoid social media entirely tend to perform better in school, which suggests that excessive use of digital technology can be harmful to education. In conclusion, social media has both advantages and disadvantages, so schools should consider implementing guidelines for teenagers' internet use rather than an outright ban.`],
+
+  // p09
+  [`Social media have become a indispensable part of modern life, affecting teenagers in many ways. It is clear that platforms like Instagram and TikTok provides numerous benefits to young people worldwide. While social media can enhance social skills among teenagers, it also poses significant risks to their academic performance and mental health.
+
+A 2023 survey conducted at one high school in Ohio found that students spending more than three hours daily on social media had lower grades, suggesting a potential correlation between excessive social media use and academic performance. However, further research is needed to establish causation. Some critics argue that social media spreads misinformation and enables cyberbullying. However, because these platforms have millions of users, the information shared must be generally trustworthy. Furthermore, since most users have never reported being cyberbullied, this issue is clearly not a significant problem and does not deserve further discussion.
+
+It is also important to noting that teenagers who avoid social media entirely tend to perform better in school, which proves that digital technology is harmful to education. In conclusion, social media has both advantages and disadvantages, therefore schools should immediately ban some teenagers from accessing the internet entirely.`,
+
+   `Social media has become an indispensable part of modern life, affecting teenagers in many ways. It is clear that platforms like Instagram and TikTok provides numerous benefits to young people worldwide. Since most teenagers use social media daily, this suggests that social media may enhance the social skills of some young users.
+
+A 2023 survey conducted at one high school in Ohio found that students spending more than three hours daily on social media had lower grades. This single finding suggests that social media may contribute to academic decline among some teenagers globally. Some critics argue that social media spreads misinformation and enables cyberbullying. However, because these platforms have millions of users, the information shared may be generally trustworthy. Furthermore, since many users may not report being cyberbullied, this issue may not be fully understood and deserves further discussion.
+
+It is also important to note that teenagers who avoid social media entirely tend to perform better in school, which suggests that excessive use of digital technology can be harmful to education. In conclusion, social media has both advantages and disadvantages, therefore schools should immediately ban all teenagers from accessing the internet entirely.`],
+
+  // p10
+  [`Social media has become an important part of modern life, affecting teenagers in many ways. Platforms such as Instagram and TikTok provide benefits, helping young people connect socially and stay informed. At the same time, concerns have been raised about cyberbullying and the spread of false information.
+
+Research suggests that heavy social media use may be associated with lower academic performance. A 2023 survey found that students who spent more than three hours a day on social media tended to have lower grades. Some argue this shows social media harms education, though the relationship may be more complicated than it first appears.
+
+Teenagers who limit their social media use may perform better in school, but completely avoiding digital technology is not always realistic or necessary. In conclusion, rather than banning social media entirely, a more balanced approach would encourage responsible use and promote digital literacy among young people.`,
+
+   `Social media has become a significant and contested feature of modern adolescent life, with its effects on teenagers remaining subject to ongoing empirical debate. Platforms such as Instagram and TikTok are neither uniformly beneficial nor harmful; their impact is mediated by patterns of use, individual vulnerability, and surrounding social context.
+
+A 2023 survey at a single Ohio high school found an association between heavy use and lower grades. This finding cannot support a global generalisation. Confounders such as pre-existing academic difficulties and displaced sleep are plausible alternative explanations the study design cannot rule out.
+
+Concerns about misinformation and cyberbullying resist easy dismissal. Platform scale can amplify harmful content as readily as reliable information. Cyberbullying is associated in the literature with anxiety and depression, outcomes that deserve proportionate policy attention.
+
+The appropriate response is not a blanket internet ban. Instead, policy should address algorithmic amplification of harmful content, inadequate reporting tools, and gaps in digital literacy education.`],
+
+  // p11
+  [`Social media have become an indispensable part of modern life, affecting teenagers in many ways. It is clear that platforms like Instagram and TikTok provides numerous benefits to young people worldwide. Since most teenagers use social media daily, this suggests that social media can improve the social skills of many young users.
+
+A 2023 survey conducted at a high school in Ohio found that students who spent more than three hours daily on social media had lower grades. This finding suggests a correlation between social media use and academic decline among teenagers, but it cannot be deemed the sole cause globally. Some critics argue that social media spreads misinformation and enables cyberbullying. However, because these platforms have millions of users, the information shared must be generally trustworthy. Furthermore, while many users may not report experiences of cyberbullying, this issue still warrants attention and discussion due to its potential impact.
+
+It is also important to note that teenagers who avoid social media entirely tend to perform better in school, suggesting that excessive digital technology use can be detrimental to education. In conclusion, while social media has both advantages and disadvantages, schools should consider implementing guidelines to help teenagers manage their internet use effectively.`,
+
+   `Social media has become an indispensable part of modern life, affecting teenagers in many ways. It is clear that platforms like Instagram and TikTok provides numerous benefits to young people worldwide. Since most teenagers use social media daily, this suggests that social media may enhance the social skills of many young users.
+
+A 2023 survey conducted at one high school in Ohio found that students spending more than three hours daily on social media had lower grades. This single finding suggests that social media may be a contributing factor to academic decline among some teenagers globally. Some critics argue that social media spreads misinformation and enables cyberbullying. However, because these platforms have millions of users, the information shared must be generally trustworthy. Furthermore, since many users have reported experiences of cyberbullying, this issue is clearly a significant problem that warrants further discussion.
+
+It is also important to note that teenagers who avoid social media entirely tend to perform better in school, but this does not prove that all digital technology is harmful to education. In conclusion, social media has both advantages and disadvantages, so schools should consider implementing guidelines for responsible internet use among teenagers rather than an outright ban.`],
+
+  // p12
+  [`While social media offers some benefits to teenagers, such as enhanced social skills, its detrimental effects on academic performance and mental health warrant a reconsideration of its use in educational settings. Since most teenagers use social media daily, this proves that social media improves the social skills of all young users.
+
+A 2023 survey conducted at one high school in Ohio found that students spending more than three hours daily on social media had lower grades. While this finding is concerning, more comprehensive research is needed to establish a causal relationship between social media use and academic performance across diverse demographics. Some critics argue that social media spreads misinformation and enables cyberbullying. However, because these platforms have millions of users, the information shared must be generally trustworthy. Furthermore, since most users have never reported being cyberbullied, this issue is clearly a significant problem and deserve further discussion.
+
+It is also important to noting that teenagers who avoid social media entirely tend to perform better in school, which proves that all digital technology is somewhat harmful to education. In conclusion, social media has both advantages and disadvantages.`,
+
+   `Social media play an important role in modern life and can influence teenagers in various ways. It is clear that platforms like Instagram and TikTok provides numerous benefits to young people worldwide. Since a significant number of teenagers use social media daily, it may suggest that social media has the potential to enhance the social skills of many young users.
+
+A 2023 survey conducted at a high school in Ohio, which involved a sample of 200 students and assessed their social media usage and academic performance, suggested that those who spent more than three hours daily on social media tended to have lower grades, potentially indicating a relationship between excessive social media use and academic challenges. This particular finding suggests that social media may be a significant factor contributing to academic decline among many teenagers worldwide. Some critics suggest that social media can contribute to the spread of misinformation and may facilitate instances of cyberbullying. While it is true that the presence of millions of users on these platforms can raise concerns about the reliability of shared information, it is reasonable to suggest that, in many cases, the information tends to be relatively trustworthy. Furthermore, since a significant number of users have not reported experiences of cyberbullying, it may suggest that this issue is not as prevalent as some might believe, and thus it might warrant a more nuanced discussion rather than being dismissed outright.
+
+It is worth noting that teenagers who avoid social media may tend to perform better in school, suggesting that while digital technology can have some negative effects on education, its impact may vary among individuals. In conclusion, while social media presents various advantages and disadvantages, it may be beneficial for schools to consider implementing restrictions on internet access for teenagers, rather than an outright ban.`],
+
+  // p13
+  [`Social media have become a indispensable part of modern life, affecting teenagers in many ways. It is clear that platforms like Instagram and TikTok provides numerous benefits to young people worldwide. Since most teenagers use social media daily, this proves that social media improves the social skills of all young users.
+
+A 2023 survey conducted at one high school in Ohio found that students spending more than three hours daily on social media had lower grades. This single finding demonstrates that social media is the main cause of academic decline among all teenagers globally. Some critics argue that social media spreads misinformation and enables cyberbullying. However, because these platforms have millions of users, the information shared is generally trustworthy. Furthermore, since most users have never reported being cyberbullied, this issue is clearly a significant problem and deserve further discussion.
+
+It is also important to noting that teenagers who avoid social media tend to perform better in school, which proves that all digital technology is very harmful to education. In conclusion, social media has both advantages and disadvantages, therefore schools should immediately ban all teenagers from accessing the internet entirely.`,
+
+   `Social media have become an important aspect of modern life, influencing teenagers in various ways. It is clear that platforms like Instagram and TikTok provides numerous benefits to young people worldwide. Since a significant number of teenagers use social media on a daily basis, it suggests that social media may enhance the social skills of many young users.
+
+A 2023 survey conducted at one high school in Ohio found that students spending more than three hours daily on social media had lower grades. This single finding suggests that social media may play a significant role in contributing to academic decline among many teenagers around the world. Some critics argue that social media spreads misinformation and enables cyberbullying. However, while these platforms may have millions of users, the information shared can vary in trustworthiness, necessitating careful evaluation by users to determine its reliability. Additionally, because a significant number of users have not reported experiences of cyberbullying, it may be argued that this issue is not a pressing concern and might not warrant extensive discussion.
+
+It is also important to note that there is evidence suggesting teenagers who avoid social media may perform better in school, which implies that excessive digital technology use could potentially have detrimental effects on education. In conclusion, while social media offers various advantages and disadvantages, it may be beneficial for schools to consider implementing guidelines that limit teenagers' access to certain online platforms rather than an outright ban on internet use.`],
+
+  // p14
+  [`Social media have become a indispensable part of modern life, affecting teenagers in many ways. It is clear that platforms like Instagram and TikTok provides numerous benefits to young people worldwide. Since most teenagers use social media daily, this proves that social media improves the social skills of many young users.
+
+A 2023 survey conducted at one high school in Ohio found that students spending more than three hours daily on social media had lower grades. This single finding demonstrates that social media is the sole cause of academic decline among some teenagers globally. Some critics argue that social media spreads misinformation and enables cyberbullying. However, because these platforms have millions of users, the information shared is generally trustworthy.
+
+It is also important to noting that teenagers who avoid social media entirely tend to perform better in school, which proves that some digital technology at school is harmful to education. In conclusion, social media has both advantages and disadvantages, therefore schools should ban some teenagers from accessing the internet entirely.`,
+
+   `Social media have become an important aspect of modern life, influencing teenagers in various ways. It is clear that platforms like Instagram and TikTok provides numerous benefits to young people worldwide. Since a significant number of teenagers use social media daily, it suggests that social media may play a role in enhancing the social skills of many young users.
+
+A 2023 survey conducted at one high school in Ohio found that students spending more than three hours daily on social media had lower grades. This single finding suggests that social media may be a significant factor contributing to academic decline among many teenagers worldwide. Some critics argue that social media spreads misinformation and enables cyberbullying. However, while these platforms have millions of users, which can enhance the potential for trustworthy information, it is important to remain cautious as the quality of shared content may vary significantly. While many users have not reported experiences of cyberbullying, it may be worth considering whether this issue warrants further discussion.
+
+It is also important to note that teenagers who avoid social media may tend to perform better in school, suggesting that excessive use of digital technology could potentially have negative effects on education. In conclusion, while social media presents various advantages and disadvantages, it may be beneficial for schools to consider implementing restrictions on internet access for teenagers to promote a safer online environment.`],
+
+  // p15
+  [`Social media have become a indispensable part of modern life, affecting teenagers in many ways. It is clear that platforms like Instagram and TikTok provides numerous benefits to young people worldwide. Since most teenagers use social media daily, this proves that social media improves the social skills of young users.
+
+A 2023 survey conducted at one high school in Ohio found that students spending more than three hours daily on social media had lower grades. This single finding demonstrates that social media is one of the cause of academic decline among all teenagers globally. Some critics argue that social media spreads misinformation and enables cyberbullying. However, because these platforms have millions of users, the information shared is generally trustworthy. Furthermore, this issue is clearly a significant problem and deserve further discussion.
+
+It is also important to noting that teenagers who avoid social media tend to perform better in school, which proves that some of the digital technology is harmful to education. In conclusion, social media has both advantages and disadvantages, therefore schools should consider banning some teenagers from accessing the internet.`,
+
+   `Social media play a significant role in modern life, influencing teenagers in various ways. It is clear that platforms like Instagram and TikTok provides numerous benefits to young people worldwide. Since a significant number of teenagers use social media daily, it suggests that social media may enhance the social skills of many young users.
+
+A 2023 survey conducted at one high school in Ohio found that students spending more than three hours daily on social media had lower grades. This particular study suggests that social media may contribute significantly to academic decline among many teenagers worldwide. Some critics argue that social media spreads misinformation and enables cyberbullying. While it is true that the sheer number of users on these platforms can lead to a wide variety of information being shared, it is reasonable to suggest that a significant portion of this information may be generally trustworthy. Furthermore, since a significant number of users have not reported experiences of cyberbullying, this issue may not be as pressing as some might suggest and could warrant further examination.
+
+It is important to note that teenagers who avoid social media may perform better in school, suggesting that digital technology can have negative effects on education in some cases. In conclusion, while social media presents various advantages and disadvantages, it may be beneficial for schools to consider implementing guidelines that restrict internet access for teenagers in certain contexts, rather than an outright ban.`],
+
+  // p16
+  [`Social media have become a indispensable part of modern life, affecting teenagers in many ways. It is clear that platforms like Instagram and TikTok provides numerous benefits to young people worldwide. Since most teenagers use social media daily, this proves that social media improves the social skills of young users.
+
+A 2023 survey conducted at one high school in Ohio found that students spending more than three hours daily on social media had lower grades. This single finding demonstrates that social media is the cause of academic decline among all teenagers globally. Some critics argue that social media spreads misinformation and enables cyberbullying. However, because these platforms have millions of users, the information shared must be generally trustworthy.
+
+It is also important to noting that teenagers who avoid social media tend to perform better in school, which proves that all digital technology is sometimes harmful to education. In conclusion, social media has both advantages and disadvantages, therefore schools should ban teenagers from accessing the internet.`,
+
+   `Social media play a significant role in modern life and influence teenagers in various ways. Platforms like Instagram and TikTok may offer a variety of benefits to many young people around the world, as they provide opportunities for social connection, creativity, and self-expression. Since many teenagers use social media daily, this suggests a potential link between social media use and the development of social skills in young users.
+
+A 2023 survey conducted at a high school in Ohio indicated that students who reported spending more than three hours daily on social media tended to have lower grades, with approximately 60% of these students achieving a GPA below 2.5. This single finding suggests that social media may be a significant factor contributing to academic decline among many teenagers around the world. Certain critics contend that social media platforms can contribute to the dissemination of misinformation and may facilitate instances of cyberbullying. However, while these platforms have millions of users, which can enhance the likelihood of trustworthy information being shared, it is important to recognize that not all content is verified and some misinformation may still circulate. Additionally, because a significant number of users have not reported experiences of cyberbullying, this issue may not warrant extensive discussion.
+
+It is also important to note that teenagers who tend to avoid social media may perform better in school, suggesting that excessive use of digital technology could have negative effects on education. In conclusion, while social media presents various advantages and disadvantages, it may be beneficial for schools to consider implementing restrictions on internet access for teenagers in certain contexts.`],
+];
+
+// ══════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════
+let prolificId = '';
+let currentIdx = 0;
+const ratings = {}; // { p01: { A: { claim:3, evid:3, cohe:3, corr:3 }, B: {...} }, ... }
+
+function pKey(i) { return 'p' + String(i+1).padStart(2,'0'); }
+
+function initRatings(i) {
+  const k = pKey(i);
+  if (!ratings[k]) {
+    ratings[k] = {
+      A: { claim: 3, evid: 3, cohe: 3, corr: 3 },
+      B: { claim: 3, evid: 3, cohe: 3, corr: 3 }
+    };
+  }
+}
+
+// ══════════════════════════════════════════
+// SCREENS
+// ══════════════════════════════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function startRating() {
+  const val = document.getElementById('prolificInput').value.trim();
+  if (!val) {
+    document.getElementById('prolificInput').classList.add('error');
+    document.getElementById('prolificError').classList.add('show');
+    return;
+  }
+  prolificId = val;
+  document.getElementById('raterBadge').textContent = val.length > 12 ? val.slice(0,12)+'…' : val;
+  currentIdx = 0;
+  renderParticipant(currentIdx);
+  showScreen('screen-rating');
+}
+
+// ══════════════════════════════════════════
+// RENDER
+// ══════════════════════════════════════════
+function renderParticipant(i) {
+  initRatings(i);
+  const k = pKey(i);
+  const [textA, textB] = PARTICIPANTS[i];
+
+  document.getElementById('progressLabel').textContent = `Participant ${i+1} of ${PARTICIPANTS.length}`;
+  document.getElementById('progressFill').style.width = ((i+1) / PARTICIPANTS.length * 100) + '%';
+  document.getElementById('participantEyebrow').textContent = 'Argumentative Essay';
+  document.getElementById('participantTitle').textContent = `Participant ${i+1}`;
+
+  document.getElementById('essayTextA').textContent = textA;
+  document.getElementById('essayTextB').textContent = textB;
+
+  renderSliders('slidersA', k, 'A');
+  renderSliders('slidersB', k, 'B');
+
+  document.getElementById('btnBack').disabled = (i === 0);
+  document.getElementById('btnNext').textContent = (i === PARTICIPANTS.length - 1) ? 'Finish ✓' : 'Next Participant →';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function renderSliders(containerId, pKey, version) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = '';
+  DIMENSIONS.forEach(dim => {
+    const val = ratings[pKey][version][dim.key];
+    const row = document.createElement('div');
+    row.className = 'slider-row';
+    row.innerHTML = `
+      <div class="slider-row-top">
+        <span class="slider-dimension">${dim.label}</span>
+        <span class="slider-value-display" id="val-${version}-${dim.key}-${pKey}">${val}</span>
+      </div>
+      <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:4px;">${dim.desc}</div>
+      <div class="slider-track-wrap">
+        <input type="range" min="1" max="5" step="0.5" value="${val}"
+          oninput="updateRating('${pKey}','${version}','${dim.key}', this.value)"
+          style="background: linear-gradient(to right, var(--accent) ${(val-1)/4*100}%, var(--track) ${(val-1)/4*100}%)">
+      </div>
+      <div class="tick-row">
+        <span class="tick">1</span><span class="tick">1.5</span><span class="tick">2</span><span class="tick">2.5</span><span class="tick">3</span><span class="tick">3.5</span><span class="tick">4</span><span class="tick">4.5</span><span class="tick">5</span>
+      </div>`;
+    container.appendChild(row);
+  });
+}
+
+function updateRating(pk, version, dimKey, val) {
+  val = parseFloat(val);
+  ratings[pk][version][dimKey] = val;
+  const disp = document.getElementById(`val-${version}-${dimKey}-${pk}`);
+  if (disp) disp.textContent = val;
+  // update track fill
+  const pct = (val - 1) / 4 * 100;
+  event.target.style.background = `linear-gradient(to right, var(--accent) ${pct}%, var(--track) ${pct}%)`;
+}
+
+function navigate(dir) {
+  const next = currentIdx + dir;
+  if (next < 0) return;
+  if (next >= PARTICIPANTS.length) {
+    showScreen('screen-done');
+    return;
+  }
+  currentIdx = next;
+  renderParticipant(currentIdx);
+}
+
+// ══════════════════════════════════════════
+// SUBMIT TO GOOGLE SHEETS
+// ══════════════════════════════════════════
+const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbzwot0424AtM4ME68Br6wwGo-eC9ryaxr-9TFU0aYk-vULp857hFQTT1DsKuOKqrDDB/exec';
+
+async function submitToSheets() {
+  const btn = document.getElementById('btnSubmit');
+  const status = document.getElementById('submitStatus');
+  btn.disabled = true;
+  btn.textContent = 'Submitting…';
+  status.style.color = 'var(--text-muted)';
+  status.textContent = 'Sending your ratings to the researcher…';
+
+  const rows = [];
+  for (let i = 0; i < PARTICIPANTS.length; i++) {
+    const k = pKey(i);
+    if (!ratings[k]) continue;
+    ['A','B'].forEach(v => {
+      const r = ratings[k][v];
+      rows.push({ prolificId, participant: k, version: v, claim: r.claim, evid: r.evid, cohe: r.cohe, corr: r.corr });
+    });
+  }
+
+  try {
+    await fetch(SHEETS_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rows })
+    });
+    btn.textContent = '✓ Submitted';
+    btn.style.background = '#2a7a4b';
+    status.style.color = '#2a7a4b';
+    status.textContent = 'Ratings submitted successfully. You may now return to Prolific.';
+  } catch (err) {
+    btn.disabled = false;
+    btn.textContent = 'Retry Submission';
+    status.style.color = 'var(--accent2)';
+    status.textContent = 'Submission failed. Please export the CSV as a backup and contact the researcher.';
+  }
+}
+
+// ══════════════════════════════════════════
+// EXPORT CSV
+// ══════════════════════════════════════════
+function exportCSV() {
+  const rows = [['ProlificID','Participant','EssayVersion','ClaimClarity','EvidenceStrength','Coherence','Correctness']];
+  for (let i = 0; i < PARTICIPANTS.length; i++) {
+    const k = pKey(i);
+    if (!ratings[k]) continue;
+    ['A','B'].forEach(v => {
+      const r = ratings[k][v];
+      rows.push([prolificId, k, v, r.claim, r.evid, r.cohe, r.corr]);
+    });
+  }
+  const csv = rows.map(r => r.join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `ratings_arg_${prolificId}_${Date.now()}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+</script>
+</body>
+</html>
