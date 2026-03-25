@@ -851,7 +851,8 @@ async function submitToSheets() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ rows })
     });
-    const result = await response.json();
+    const text = await response.text();
+    const result = JSON.parse(text);
     if (result.status === 'ok') {
       btn.textContent = '✓ Submitted';
       btn.style.background = '#2a7a4b';
