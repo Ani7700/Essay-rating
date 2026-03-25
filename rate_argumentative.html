@@ -825,7 +825,7 @@ function navigate(dir) {
 // ══════════════════════════════════════════
 // SUBMIT TO GOOGLE SHEETS
 // ══════════════════════════════════════════
-const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbxBHHzaWUfbiGK4p5j5YhaIz2eRAWbxQ6H_A3yxPA4Z2XHydwFDLvPJkZ2Eibk8y5rd/exec';
+const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbz3zYsrrR6vcso-zlP7qEST_ZqS3wP8_T54lWrg2uRKeHyuauwbPpCfhdNSPqbQwsQ/exec';
 
 async function submitToSheets() {
   const btn = document.getElementById('btnSubmit');
@@ -846,21 +846,26 @@ async function submitToSheets() {
   }
 
   try {
-    await fetch(SHEETS_URL, {
+    const response = await fetch(SHEETS_URL, {
       method: 'POST',
-      mode: 'no-cors',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ rows })
     });
-    btn.textContent = '✓ Submitted';
-    btn.style.background = '#2a7a4b';
-    status.style.color = '#2a7a4b';
-    status.textContent = 'Ratings submitted successfully. You may now return to Prolific.';
+    const result = await response.json();
+    if (result.status === 'ok') {
+      btn.textContent = '✓ Submitted';
+      btn.style.background = '#2a7a4b';
+      status.style.color = '#2a7a4b';
+      status.textContent = 'Ratings submitted successfully. You may now return to Prolific.';
+    } else {
+      throw new Error(result.message || 'Unknown error');
+    }
   } catch (err) {
     btn.disabled = false;
     btn.textContent = 'Retry Submission';
     status.style.color = 'var(--accent2)';
     status.textContent = 'Submission failed. Please export the CSV as a backup and contact the researcher.';
+    console.error('Submission error:', err);
   }
 }
 
