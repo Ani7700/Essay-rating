@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Rate AI-Assisted Writing Revisions</title>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap');
 
@@ -395,6 +396,141 @@
     .welcome-wrap, .done-wrap { margin: 40px 16px; padding: 36px 24px; }
     .rating-wrap { padding: 24px 12px 60px; }
   }
+
+  /* ── SUMMARY MODAL ── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal-box {
+    background: var(--surface);
+    border-radius: 14px;
+    box-shadow: 0 8px 48px rgba(0,0,0,0.22);
+    width: 100%;
+    max-width: 820px;
+    max-height: 88vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .modal-header {
+    padding: 24px 32px 16px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .modal-header .eyebrow {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 6px;
+  }
+  .modal-header h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.5rem;
+  }
+  .modal-header p {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-top: 6px;
+  }
+  .modal-body {
+    overflow-y: auto;
+    padding: 20px 32px;
+    flex: 1;
+  }
+  .summary-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.83rem;
+  }
+  .summary-table thead th {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 8px 12px;
+    border-bottom: 2px solid var(--border);
+    text-align: center;
+    white-space: nowrap;
+    background: var(--bg);
+  }
+  .summary-table thead th:first-child { text-align: left; }
+  .summary-table tbody tr:nth-child(even) { background: var(--bg); }
+  .summary-table tbody td {
+    padding: 7px 12px;
+    border-bottom: 1px solid #eee;
+    text-align: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+  }
+  .summary-table tbody td:first-child {
+    text-align: left;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 600;
+    color: var(--accent);
+  }
+  .version-badge {
+    display: inline-block;
+    padding: 1px 7px;
+    border-radius: 10px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    margin-left: 4px;
+  }
+  .badge-a { background: var(--essay-a); color: var(--accent); border: 1px solid #c5d9ef; }
+  .badge-b { background: var(--essay-b); color: var(--accent2); border: 1px solid #f0cfc0; }
+  .modal-footer {
+    padding: 18px 32px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    flex-shrink: 0;
+    background: var(--surface);
+  }
+  .btn-modal-cancel {
+    padding: 10px 24px;
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-modal-cancel:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-modal-submit {
+    padding: 10px 28px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .btn-modal-submit:hover { background: #1e3f63; }
+  .btn-modal-submit:disabled { opacity: 0.55; cursor: default; }
+  #modalStatus {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    align-self: center;
+    flex: 1;
+  }
 </style>
 </head>
 <body>
@@ -475,16 +611,54 @@
 ══════════════════════════════════════════ -->
 <div class="screen" id="screen-done">
   <div class="done-wrap">
-    <div class="done-icon">✓</div>
-    <h2>Rating Complete</h2>
-    <p>Thank you for rating all 16 participants' argumentative essays. Please submit your ratings, then return to Prolific.</p>
-    <button class="btn-primary" id="btnSubmit" onclick="submitToSheets()" style="margin-bottom:12px;">Submit Ratings to Researcher</button>
-    <div id="submitStatus" style="font-size:0.85rem;margin-bottom:20px;min-height:20px;color:var(--text-muted);"></div>
-    <button class="btn-export" onclick="exportCSV()">⬇ Also Export as CSV (backup)</button>
+    <div class="done-icon">✅</div>
+    <h2>Submission Complete</h2>
+    <p>Your ratings have been sent to the researcher. Thank you — you may now return to Prolific.</p>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SUMMARY MODAL
+══════════════════════════════════════════ -->
+<div class="modal-overlay" id="summaryModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="eyebrow">Review before submitting</div>
+      <h2>Your Ratings Summary</h2>
+      <p>Please review all scores below. Go back to adjust if needed, then confirm to submit.</p>
+    </div>
+    <div class="modal-body">
+      <table class="summary-table">
+        <thead>
+          <tr>
+            <th>Participant</th>
+            <th>Version</th>
+            <th>Claim Clarity</th>
+            <th>Evidence Strength</th>
+            <th>Coherence</th>
+            <th>Correctness</th>
+          </tr>
+        </thead>
+        <tbody id="summaryTableBody"></tbody>
+      </table>
+    </div>
+    <div class="modal-footer">
+      <span id="modalStatus"></span>
+      <button class="btn-modal-cancel" onclick="closeModal()">← Go Back &amp; Edit</button>
+      <button class="btn-modal-submit" id="btnModalSubmit" onclick="confirmSubmit()">Confirm &amp; Submit →</button>
+    </div>
   </div>
 </div>
 
 <script>
+// ══════════════════════════════════════════
+// CONFIG — EmailJS
+// ══════════════════════════════════════════
+const EMAILJS_SERVICE_ID  = 'service_8sqy95k';
+const EMAILJS_TEMPLATE_ID = 'template_cr1rwad';
+const EMAILJS_PUBLIC_KEY  = '9oTzLoVdTJDUHV3C6';
+const RESEARCHER_EMAIL    = 'jessy77889900@gmail.com';
+
 // ══════════════════════════════════════════
 // DATA
 // ══════════════════════════════════════════
@@ -815,7 +989,8 @@ function navigate(dir) {
   const next = currentIdx + dir;
   if (next < 0) return;
   if (next >= PARTICIPANTS.length) {
-    showScreen('screen-done');
+    // All participants rated — show summary modal instead of done screen
+    openSummaryModal();
     return;
   }
   currentIdx = next;
@@ -823,50 +998,89 @@ function navigate(dir) {
 }
 
 // ══════════════════════════════════════════
-// SUBMIT TO GOOGLE SHEETS
+// SUMMARY MODAL
 // ══════════════════════════════════════════
-const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbxuDAB0BcRurNlPhsHVvGbhg0EoSV_rpwUphSjrbLwY2Hin0v45pVDkRkx1ozqHcr1K/exec';
+function openSummaryModal() {
+  const tbody = document.getElementById('summaryTableBody');
+  tbody.innerHTML = '';
+  for (let i = 0; i < PARTICIPANTS.length; i++) {
+    const k = pKey(i);
+    if (!ratings[k]) continue;
+    ['A', 'B'].forEach(v => {
+      const r = ratings[k][v];
+      const badgeClass = v === 'A' ? 'badge-a' : 'badge-b';
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>Participant ${i+1}</td>
+        <td><span class="version-badge ${badgeClass}">Version ${v}</span></td>
+        <td>${r.claim}</td>
+        <td>${r.evid}</td>
+        <td>${r.cohe}</td>
+        <td>${r.corr}</td>`;
+      tbody.appendChild(tr);
+    });
+  }
+  document.getElementById('modalStatus').textContent = '';
+  document.getElementById('btnModalSubmit').disabled = false;
+  document.getElementById('btnModalSubmit').textContent = 'Confirm & Submit →';
+  document.getElementById('summaryModal').classList.add('active');
+}
 
-async function submitToSheets() {
-  const btn = document.getElementById('btnSubmit');
-  const status = document.getElementById('submitStatus');
+function closeModal() {
+  document.getElementById('summaryModal').classList.remove('active');
+  // Return to last participant
+  currentIdx = PARTICIPANTS.length - 1;
+  renderParticipant(currentIdx);
+  showScreen('screen-rating');
+}
+
+async function confirmSubmit() {
+  const btn = document.getElementById('btnModalSubmit');
+  const status = document.getElementById('modalStatus');
   btn.disabled = true;
   btn.textContent = 'Submitting…';
   status.style.color = 'var(--text-muted)';
-  status.textContent = 'Sending your ratings to the researcher…';
+  status.textContent = 'Sending ratings to researcher…';
 
-  const rows = [];
+  // Build CSV string
+  const csvRows = [['ProlificID','Participant','EssayVersion','ClaimClarity','EvidenceStrength','Coherence','Correctness']];
   for (let i = 0; i < PARTICIPANTS.length; i++) {
     const k = pKey(i);
     if (!ratings[k]) continue;
     ['A','B'].forEach(v => {
       const r = ratings[k][v];
-      rows.push({ prolificId, participant: k, version: v, claim: r.claim, evid: r.evid, cohe: r.cohe, corr: r.corr });
+      csvRows.push([prolificId, k, v, r.claim, r.evid, r.cohe, r.corr]);
     });
   }
+  const csvContent = csvRows.map(r => r.join(',')).join('\n');
+  const timestamp = new Date().toISOString().replace('T',' ').slice(0,19);
 
   try {
-    const response = await fetch(SHEETS_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ rows })
+    await emailjs.init(EMAILJS_PUBLIC_KEY);
+    const result = await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+      to_email:     RESEARCHER_EMAIL,
+      prolific_id:  prolificId,
+      timestamp:    timestamp,
+      essay_type:   'Argumentative',
+      csv_content:  csvContent,
     });
-    const text = await response.text();
-    const result = JSON.parse(text);
-    if (result.status === 'ok') {
-      btn.textContent = '✓ Submitted';
-      btn.style.background = '#2a7a4b';
+
+    if (result.status === 200) {
       status.style.color = '#2a7a4b';
-      status.textContent = 'Ratings submitted successfully. You may now return to Prolific.';
+      status.textContent = '✓ Ratings sent to researcher';
+      setTimeout(() => {
+        document.getElementById('summaryModal').classList.remove('active');
+        showScreen('screen-done');
+      }, 1200);
     } else {
-      throw new Error(result.message || 'Unknown error');
+      throw new Error('EmailJS returned status ' + result.status);
     }
   } catch (err) {
     btn.disabled = false;
-    btn.textContent = 'Retry Submission';
+    btn.textContent = 'Retry Submit';
     status.style.color = 'var(--accent2)';
-    status.textContent = 'Submission failed. Please export the CSV as a backup and contact the researcher.';
-    console.error('Submission error:', err);
+    status.textContent = 'Submission failed. Please contact the researcher.';
+    console.error('EmailJS error:', err);
   }
 }
 
